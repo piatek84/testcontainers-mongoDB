@@ -1,18 +1,16 @@
 package com.example.testcontainers;
 
 import com.example.testcontainers.model.Player;
-import com.google.gson.Gson;
+import com.example.testcontainers.repository.PlayerRepository;
 import io.restassured.response.Response;
-import org.jetbrains.annotations.NotNull;
 import org.json.JSONArray;
 import org.json.JSONException;
-import org.json.JSONObject;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.skyscreamer.jsonassert.JSONAssert;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.server.LocalServerPort;
-import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.testcontainers.containers.MongoDBContainer;
@@ -20,6 +18,7 @@ import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.utility.DockerImageName;
 
+import static com.example.testcontainers.Utils.toJsonObject;
 import static io.restassured.RestAssured.given;
 
 @Testcontainers
@@ -38,15 +37,20 @@ public class MongoDbApplicationV2Test {
     }
 
     @Autowired
-    private MongoTemplate mongoTemplate;
+    private PlayerRepository repository;
+
+    @AfterEach
+    void delete(){
+        repository.deleteAll();
+    }
 
     @Test
     void testPlayersApi() throws JSONException {
         //given
         Player player1 = new Player("1", "Duncan", "Idaho");
         Player player2 = new Player("2", "Paul", "Atreides");
-        this.mongoTemplate.save(player1);
-        this.mongoTemplate.save(player2);
+        repository.save(player1);
+        repository.save(player2);
 
         JSONArray expected = new JSONArray()
                 .put(toJsonObject(player1))
@@ -60,10 +64,5 @@ public class MongoDbApplicationV2Test {
         //then
         JSONArray actual = new JSONArray(response.getBody().asString());
         JSONAssert.assertEquals(expected, actual, false);
-    }
-
-    @NotNull
-    private static JSONObject toJsonObject(Player player) throws JSONException {
-        return new JSONObject(new Gson().toJson(player));
     }
 }
