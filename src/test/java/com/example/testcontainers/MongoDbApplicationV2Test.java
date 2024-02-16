@@ -2,9 +2,12 @@ package com.example.testcontainers;
 
 import com.example.testcontainers.model.Player;
 import com.example.testcontainers.repository.PlayerRepository;
+import com.google.gson.Gson;
+import io.restassured.http.ContentType;
 import io.restassured.response.Response;
 import org.json.JSONArray;
 import org.json.JSONException;
+import org.json.JSONObject;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.skyscreamer.jsonassert.JSONAssert;
@@ -63,6 +66,27 @@ public class MongoDbApplicationV2Test {
 
         //then
         JSONArray actual = new JSONArray(response.getBody().asString());
+        JSONAssert.assertEquals(expected, actual, false);
+    }
+
+    @Test
+    void testPlayerApi() throws JSONException {
+        //given
+        Player player1 = new Player("1", "Duncan", "Idaho");
+
+        JSONObject expected = toJsonObject(player1);
+
+        //when
+        Response response =
+                given()
+                        .contentType(ContentType.JSON).
+                        body(player1)
+                .when()
+                        .post(URL + this.port + "/player");
+
+
+        //then
+        JSONObject actual = new JSONObject(response.getBody().asString());
         JSONAssert.assertEquals(expected, actual, false);
     }
 }
