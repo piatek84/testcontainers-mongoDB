@@ -43,16 +43,14 @@ public class MongoDbApplicationV2Test {
     @Test
     void testPlayersApi() throws JSONException {
         //given
-        Player player1 = new Player("1", "Pete", "Smith");
-        Player player2 = new Player("2", "John", "Parker");
-        Player player3 = new Player("3", "Antony", "Bond");
+        Player player1 = new Player("1", "Duncan", "Idaho");
+        Player player2 = new Player("2", "Paul", "Atreides");
         this.mongoTemplate.save(player1);
         this.mongoTemplate.save(player2);
-        this.mongoTemplate.save(player3);
+
         JSONArray expected = new JSONArray()
                 .put(toJsonObject(player1))
-                .put(toJsonObject(player2))
-                .put(toJsonObject(player3));
+                .put(toJsonObject(player2));
 
         //when
         Response response = given()
