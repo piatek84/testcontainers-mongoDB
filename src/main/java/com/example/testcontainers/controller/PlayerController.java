@@ -26,7 +26,7 @@ public class PlayerController {
         return repository.findAll();
     }
 
-    @PostMapping(path = "player",
+    @PostMapping(path = "/players",
             consumes = MediaType.APPLICATION_JSON_VALUE,
             produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<Player> addPlayer(@RequestBody Player newPlayer) {

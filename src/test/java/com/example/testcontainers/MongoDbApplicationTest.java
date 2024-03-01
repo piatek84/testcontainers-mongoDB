@@ -1,51 +1,109 @@
 package com.example.testcontainers;
 
-import com.mongodb.client.MongoClient;
-import com.mongodb.client.MongoClients;
-import com.mongodb.client.MongoCollection;
-import org.bson.Document;
+import com.example.testcontainers.model.Player;
+import com.example.testcontainers.repository.PlayerRepository;
+import io.restassured.http.ContentType;
+import io.restassured.response.Response;
+import io.restassured.specification.RequestSpecification;
+import net.datafaker.Faker;
 import org.jetbrains.annotations.NotNull;
+import org.json.JSONArray;
+import org.json.JSONException;
+import org.json.JSONObject;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
-import org.springframework.boot.test.autoconfigure.data.mongo.DataMongoTest;
+import org.skyscreamer.jsonassert.JSONAssert;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.web.server.LocalServerPort;
+import org.springframework.test.context.DynamicPropertyRegistry;
+import org.springframework.test.context.DynamicPropertySource;
 import org.testcontainers.containers.MongoDBContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.utility.DockerImageName;
 
-import java.util.ArrayList;
-import java.util.List;
-
-import static org.assertj.core.api.Assertions.assertThat;
+import static com.example.testcontainers.Utils.toJsonObject;
+import static io.restassured.RestAssured.given;
 
 @Testcontainers
-@DataMongoTest
+@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 public class MongoDbApplicationTest {
 
-
+    public static final String URL = "http://localhost:";
+    public static final String PLAYERS = "/players";
+    @LocalServerPort
+    private int port;
     @Container
     private static final MongoDBContainer mongoDBContainer = new MongoDBContainer(DockerImageName.parse("mongo:4.0.10"));
-    public static final String DATABASE_NAME = "test";
-    public static final String PLAYERS = "players";
 
+    @DynamicPropertySource
+    static void setProperties(DynamicPropertyRegistry registry) {
+        registry.add("spring.data.mongodb.uri", mongoDBContainer::getReplicaSetUrl);
+    }
+
+    @Autowired
+    private PlayerRepository repository;
+
+    @AfterEach
+    void delete(){
+        repository.deleteAll();
+    }
+
+    Faker faker = new Faker();
+;
     @Test
-    void databaseIsRunningWithExpectedNumberOfPlayers(){
+    void shouldReturnAllPlayers() throws JSONException {
         //given
-        MongoClient mongoClient = setupDatabase();
+        Player player1 = generatePlayer();
+        Player player2 = generatePlayer();
 
-        assertThat(mongoClient.getDatabase(DATABASE_NAME).getCollection(PLAYERS).countDocuments())
-                .isEqualTo(2);
+        repository.save(player1);
+        repository.save(player2);
+
+        JSONArray expected = new JSONArray()
+                .put(toJsonObject(player1))
+                .put(toJsonObject(player2));
+
+        //when
+        Response response = generateBaseGiven()
+                .when()
+                .get(PLAYERS);
+
+
+        //then
+        response.then().statusCode(200);
+        JSONArray actual = new JSONArray(response.getBody().asString());
+        JSONAssert.assertEquals(expected, actual, false);
+    }
+
+   @Test
+    void shouldSavePlayer() throws JSONException {
+        //given
+        Player player1 = generatePlayer();
+
+        JSONObject expected = toJsonObject(player1);
+
+        //when
+        Response response = generateBaseGiven()
+                .body(player1)
+                .when()
+                .post(PLAYERS);
+
+        //then
+       response.then().statusCode(201);
+       JSONObject actual = new JSONObject(response.getBody().asString());
+       JSONAssert.assertEquals(expected, actual, false);
     }
 
     @NotNull
-    private static MongoClient setupDatabase() {
-        MongoClient mongoClient = MongoClients.create(mongoDBContainer.getConnectionString());
-        mongoClient.getDatabase(DATABASE_NAME).createCollection(PLAYERS);
-        MongoCollection<Document> collection = mongoClient.getDatabase(DATABASE_NAME).getCollection(PLAYERS);
+    private Player generatePlayer() {
+        return new Player(faker.idNumber().peselNumber(), faker.name().firstName(), faker.name().lastName());
+    }
 
-        List<Document> players = new ArrayList<>();
-        players.add(Document.parse("{'name': 'Duncan', surname: 'Idaho' }"));
-        players.add(Document.parse("{'name': 'Paul', surname: 'Atreides' }"));
-        collection.insertMany(players);
-        return mongoClient;
+    private RequestSpecification generateBaseGiven() {
+        return given()
+                .baseUri(URL + this.port)
+                .contentType(ContentType.JSON);
     }
 }
