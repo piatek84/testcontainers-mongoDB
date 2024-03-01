@@ -12,6 +12,8 @@ import org.json.JSONException;
 import org.json.JSONObject;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.skyscreamer.jsonassert.JSONAssert;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -94,6 +96,19 @@ public class MongoDbApplicationTest {
        response.then().statusCode(201);
        JSONObject actual = new JSONObject(response.getBody().asString());
        JSONAssert.assertEquals(expected, actual, false);
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"", " ", "wrongJson"})
+    void shouldReturnBadRequest(String body) {
+        //when
+        Response response = generateBaseGiven()
+                .body(body)
+                .when()
+                .post(PLAYERS);
+
+        //then
+        response.then().statusCode(400);
     }
 
     @NotNull
